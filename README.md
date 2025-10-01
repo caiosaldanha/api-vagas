@@ -28,10 +28,21 @@ Construção de uma pipeline completa de machine learning que inclui:
 - **Testes**: pytest (apenas para desenvolvimento)
 - **Empacotamento**: Docker & Docker Compose
 - **Deploy**: Cloud VPS ou máquina enxuta (sem GPU)
+
 - **Monitoramento**: 
   - Prometheus (métricas)
   - Grafana (dashboards)
   - Loki (agregação de logs)
+
+## ⚠️ Arquivos Grandes
+
+Alguns arquivos de dados e modelos excedem o limite de 100MB do GitHub e não estão presentes no repositório. Para utilizar o sistema completo, faça o download dos arquivos grandes diretamente na seção de [Releases](https://github.com/caiosaldanha/api-vagas/releases) do GitHub.
+
+- `model/candidate_texts_processed.joblib`
+- `data-files/applicants.json`
+- Outros arquivos grandes, se necessário
+
+Após baixar, coloque-os nas respectivas pastas do projeto.
 
 ## 📁 Estrutura do Projeto
 

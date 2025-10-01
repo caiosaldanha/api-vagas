@@ -91,23 +91,31 @@ api-vagas/
 - **Não requer GPU**
 
 
-### 1. Deploy Completo com Docker Compose
+### 1. Deploy Completo com Docker Compose (Desenvolvimento Local)
+
+Para desenvolvimento local, use o arquivo de override que mapeia portas:
 
 ```bash
 # Clone ou acesse o diretório do projeto
 cd api-vagas
 
-# Construir e iniciar todos os serviços
-docker compose up --build -d
+# Opção 1: Usar o script de deploy (recomendado para local)
+./deploy.sh
+
+# Opção 2: Comando manual
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build -d
 
 # Verificar status dos containers
 docker compose ps
 
 # Visualizar logs em tempo real
 docker compose logs -f job-matching-api
+
+# Parar todos os serviços
+docker compose -f docker-compose.yml -f docker-compose.local.yml down
 ```
 
-### 2. Acessar Serviços
+### 2. Acessar Serviços (Deploy Local)
 
 - **API**: http://localhost:8000
 - **Documentação Swagger**: http://localhost:8000/docs
@@ -115,7 +123,32 @@ docker compose logs -f job-matching-api
 - **Prometheus**: http://localhost:9090
 - **Health Check**: http://localhost:8000/health
 
-### 3. Deploy Local para Desenvolvimento
+### 3. Deploy em VPS com Traefik (Dokploy)
+
+Este projeto está configurado para deploy em VPS com Traefik reverse proxy (ex: Dokploy).
+
+**Características do deploy em produção:**
+- Usa `expose` ao invés de `ports` para evitar conflitos de porta
+- Configurado para funcionar com Traefik como reverse proxy
+- SSL/TLS automático via Let's Encrypt
+- Subpaths configurados para Prometheus (`/prometheus`) e Grafana (`/grafana`)
+- Rede externa `dokploy-network` para comunicação com Traefik
+
+**Acessar Serviços (Produção - exemplo com datathon.caiosaldanha.com):**
+- **API**: https://datathon.caiosaldanha.com
+- **Documentação Swagger**: https://datathon.caiosaldanha.com/docs
+- **Grafana Dashboard**: https://datathon.caiosaldanha.com/grafana (admin/admin123)
+- **Prometheus**: https://datathon.caiosaldanha.com/prometheus
+- **Health Check**: https://datathon.caiosaldanha.com/health
+
+**Configuração:**
+1. Certifique-se de que o Traefik está rodando e a rede `dokploy-network` existe
+2. Atualize o domínio nos labels do `docker-compose.yml` para seu domínio
+3. Deploy com: `docker compose up -d --build`
+
+**Nota:** Loki e Promtail são internos e não têm acesso externo (apenas usado pelo Grafana).
+
+### 4. Deploy Local para Desenvolvimento
 
 ```bash
 # Instalar dependências
@@ -131,7 +164,7 @@ pytest tests/ -v --cov=app --cov-report=html
 open htmlcov/index.html
 ```
 
-### 4. Comandos Úteis
+### 5. Comandos Úteis
 
 ```bash
 # Parar todos os serviços

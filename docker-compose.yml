@@ -3,31 +3,41 @@ version: '3.8'
 services:
   # API Principal
   job-matching-api:
-    build: .
-    ports:
-      - "8000:8000"
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: job-matching-api
     volumes:
       - ./logs:/app/logs
       - ./model:/app/model
     environment:
       - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=production
+    restart: unless-stopped
     networks:
-      - monitoring
+      - dokploy-network
     labels:
-      - "prometheus.job=job-matching-api"
+      - traefik.enable=true
+      - traefik.http.routers.job-matching-api.rule=Host(`datathon.caiosaldanha.com`)
+      - traefik.http.routers.job-matching-api.entrypoints=websecure
+      - traefik.http.routers.job-matching-api.tls.certResolver=letsencrypt
+      - traefik.http.services.job-matching-api.loadbalancer.server.port=8000
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
+    expose:
+      - "8000"
 
   # Prometheus para coleta de métricas
   prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
+    image: prom/prometheus:v2.45.0
+    container_name: job-matching-prometheus
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -36,53 +46,75 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
+      - '--web.external-url=https://datathon.caiosaldanha.com/prometheus'
+      - '--web.route-prefix=/prometheus'
+    restart: unless-stopped
     networks:
-      - monitoring
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.job-matching-prometheus.rule=Host(`datathon.caiosaldanha.com`) && PathPrefix(`/prometheus`)
+      - traefik.http.routers.job-matching-prometheus.entrypoints=websecure
+      - traefik.http.routers.job-matching-prometheus.tls.certResolver=letsencrypt
+      - traefik.http.services.job-matching-prometheus.loadbalancer.server.port=9090
 
   # Grafana para dashboards
   grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
+    image: grafana/grafana:10.0.0
+    container_name: job-matching-grafana
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
     environment:
+      - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin123
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://datathon.caiosaldanha.com/grafana
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    restart: unless-stopped
     networks:
-      - monitoring
-    depends_on:
-      - prometheus
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.job-matching-grafana.rule=Host(`datathon.caiosaldanha.com`) && PathPrefix(`/grafana`)
+      - traefik.http.routers.job-matching-grafana.entrypoints=websecure
+      - traefik.http.routers.job-matching-grafana.tls.certResolver=letsencrypt
+      - traefik.http.services.job-matching-grafana.loadbalancer.server.port=3000
 
-  # Loki para agregação de logs
+  # Loki para agregação de logs (interno - sem acesso externo)
   loki:
     image: grafana/loki:2.9.0
-    ports:
-      - "3100:3100"
+    container_name: job-matching-loki
     volumes:
       - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml
     command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
     networks:
-      - monitoring
+      - dokploy-network
+    expose:
+      - "3100"
 
-  # Promtail para coleta de logs
+  # Promtail para coleta de logs (interno - sem acesso externo)
   promtail:
     image: grafana/promtail:2.9.0
+    container_name: job-matching-promtail
     volumes:
       - ./logs:/var/log/app
       - ./monitoring/promtail-config.yml:/etc/promtail/config.yml
     command: -config.file=/etc/promtail/config.yml
+    restart: unless-stopped
     networks:
-      - monitoring
+      - dokploy-network
     depends_on:
       - loki
 
 networks:
-  monitoring:
-    driver: bridge
+  dokploy-network:
+    external: true
 
 volumes:
   prometheus_data:
+    driver: local
   grafana_data:
+    driver: local

@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Script de deploy automatizado para Job Matching API
+# NOTA: Este script é para deploy LOCAL com portas mapeadas.
+# Para deploy em produção com Traefik/Dokploy, use: docker compose up -d --build
 
 set -e
 
@@ -30,11 +32,11 @@ sudo chown -R 472:472 grafana_data/ || echo "⚠️ Não foi possível alterar p
 
 # Parar containers existentes
 echo "🛑 Parando containers existentes..."
-docker-compose down || echo "Nenhum container rodando"
+docker compose -f docker-compose.yml -f docker-compose.local.yml down || echo "Nenhum container rodando"
 
 # Construir e iniciar serviços
 echo "🔨 Construindo e iniciando serviços..."
-docker-compose up --build -d
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build -d
 
 # Aguardar serviços ficarem prontos
 echo "⏳ Aguardando serviços ficarem prontos..."
@@ -70,8 +72,8 @@ echo "   Grafana: http://localhost:3000 (admin/admin123)"
 echo "   Prometheus: http://localhost:9090"
 echo ""
 echo "📋 Comandos úteis:"
-echo "   Logs da API: docker-compose logs -f job-matching-api"
-echo "   Parar tudo: docker-compose down"
-echo "   Restart: docker-compose restart"
+echo "   Logs da API: docker compose logs -f job-matching-api"
+echo "   Parar tudo: docker compose -f docker-compose.yml -f docker-compose.local.yml down"
+echo "   Restart: docker compose restart"
 echo ""
 echo "🚀 Sistema pronto para uso!"
